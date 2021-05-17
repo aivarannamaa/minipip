@@ -6,7 +6,7 @@ from setuptools import find_packages, setup
 setupdir = os.path.dirname(__file__)
 
 for line in open(os.path.join(setupdir, "minipip.py")).read().splitlines():
-    if line.startswith('__version__'):
+    if line.startswith("__version__"):
         version = line.split('"')[1]
         break
 else:

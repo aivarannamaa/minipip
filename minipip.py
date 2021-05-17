@@ -21,9 +21,11 @@ from pkg_resources import Requirement
 logger = logging.getLogger(__name__)
 
 MP_ORG_INDEX = "https://micropython.org/pi"
-DEFAULT_INDEX_URLS = [MP_ORG_INDEX, "https://pypi.org/pypi"]
+PYPI_INDEX = "https://pypi.org/pypi"
+DEFAULT_INDEX_URLS = [MP_ORG_INDEX, PYPI_INDEX]
 
 __version__ = "0.1b1"
+
 
 class UserError(RuntimeError):
     pass
@@ -223,21 +225,24 @@ def _install_with_pip(specs: List[str], target_dir: str, index_urls: List[str]):
     if not suitable_indexes:
         raise UserError("No suitable indexes for pip")
 
+    index_args = ["--index-url", suitable_indexes.pop(0)]
+    while suitable_indexes:
+        index_args += ["--extra-index-url", suitable_indexes.pop(0)]
+    if index_args == ["--index-url", "https://pypi.org/pypi"]:
+        # for some reason, this form does not work for some versions of some packages
+        # (eg. micropython-os below 0.4.4)
+        index_args = []
+
     args = [
         "--no-input",
-        "--no-color",
         "--disable-pip-version-check",
         "install",
         "--upgrade",
         "--target",
         target_dir,
-    ]
+    ] + index_args
 
-    args += ["--index-url", suitable_indexes.pop(0)]
-    while suitable_indexes:
-        args += ["--extra-index-url", suitable_indexes.pop(0)]
-
-    subprocess.check_call(
+    pip_cmd = (
         [
             sys.executable,
             "-m",
@@ -246,6 +251,8 @@ def _install_with_pip(specs: List[str], target_dir: str, index_urls: List[str]):
         + args
         + specs
     )
+    logger.debug("Calling pip: %s", shlex.join(pip_cmd))
+    subprocess.check_call(pip_cmd)
 
     # delete files not required for MicroPython
     for root, dirs, files in os.walk(target_dir):
@@ -330,11 +337,13 @@ def main(raw_args: Optional[List[str]] = None) -> int:
 
     import argparse
 
-    description = textwrap.dedent("""
+    description = textwrap.dedent(
+        """
         Meant for installing both upip and pip compatible distribution packages from 
         PyPI and micropython.org/pi to a local directory, USB volume or directly to 
         MicroPython filesystem over serial connection (requires rshell).    
-    """).strip()
+    """
+    ).strip()
 
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument(
@@ -439,4 +448,4 @@ def main(raw_args: Optional[List[str]] = None) -> int:
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    sys.exit(main(sys.argv[1:]))
