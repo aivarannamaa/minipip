@@ -413,9 +413,7 @@ def main(raw_args: Optional[List[str]] = None) -> int:
         action="store_true",
     )
     parser.add_argument(
-        "--version",
-        help="Show program version and exit",
-        action="store_true",
+        "--version", help="Show program version and exit", action="version", version=__version__
     )
     args = parser.parse_args(args=raw_args)
 
@@ -451,9 +449,6 @@ def main(raw_args: Optional[List[str]] = None) -> int:
     if args.port and not args.target_dir.startswith("/"):
         return error("If port is given then target dir must be absolute Unix-style path")
 
-    if args.version:
-        print(__version__)
-        return 0
     if not all_specs:
         return error("At least one package specifier or non-empty requirements file is required")
 
