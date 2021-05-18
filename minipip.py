@@ -60,8 +60,8 @@ def _copy_to_local_target_dir(source_dir: str, target_dir: str):
     # Copying manually in order to be able to use os.fsync
     # see https://learn.adafruit.com/adafruit-circuit-playground-express/creating-and-editing-code#1-use-an-editor-that-writes-out-the-file-completely-when-you-save-it
     for root, dirs, files in os.walk(source_dir):
-        relative_dir = root[len(source_dir) :]
-        full_target_dir = target_dir + relative_dir
+        relative_dir = root[len(source_dir) :].lstrip("/\\")
+        full_target_dir = os.path.join(target_dir, relative_dir)
         for dir_name in dirs:
             full_path = os.path.join(full_target_dir, dir_name)
             if os.path.isdir(full_path):
