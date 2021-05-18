@@ -6,7 +6,7 @@ Supports both `upip-compatible packages <https://docs.micropython.org/en/latest/
 and regular pip-compatible
 packages (by using `pip install --target ... <https://pip.pypa.io/en/stable/cli/pip_install/#cmdoption-t>`_).
 
-By default it prefers packages at micropython.org-s index. If the package or required version is not
+By default it prefers packages at micropython.org-s index. If the package or the required version is not
 found there, then it turns to PyPI.
 
 If ``--port`` is given and `rshell <https://pypi.org/project/rshell/>`_ is available then uploads
