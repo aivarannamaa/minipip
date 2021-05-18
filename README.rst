@@ -19,8 +19,8 @@ Installation
 --------------
 ``pip install minipip``
 
-Requires Python 3.6+. There are no required dependencies (`rshell <https://pypi.org/project/rshell/>`_
-is optional dependency).
+Requires Python 3.6+. The only required dependencies are ``pip`` and ``setuptools``
+(most likely already present).  ``rshell`` is an optional dependency.
 
 Usage examples
 --------------
