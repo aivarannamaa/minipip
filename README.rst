@@ -9,8 +9,8 @@ packages (by using `pip install --target ... <https://pip.pypa.io/en/stable/cli/
 By default it prefers packages at micropython.org-s index. If the package or the required version is not
 found there, then it turns to PyPI.
 
-If ``--port`` is given and `rshell <https://pypi.org/project/rshell/>`_ is available then uploads
-the extracted files to the target device, otherwise just extracts to the local filesystem.
+If ``--port`` is given and `rshell <https://pypi.org/project/rshell/>`_ is available then it uploads
+the extracted files to the target device, otherwise it just extracts modules to a directory in the local filesystem.
 ``--target`` directory must be explicitly given in both cases. If target is at local filesystem, then
 makes sure data gets synced (useful, if target is a USB volume representing MicroPython or
 CircuitPython filesystem)
