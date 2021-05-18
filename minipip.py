@@ -396,6 +396,11 @@ def main(raw_args: Optional[List[str]] = None) -> int:
         help="Don't show non-error output",
         action="store_true",
     )
+    parser.add_argument(
+        "--version",
+        help="Show program version and exit",
+        action="store_true",
+    )
     args = parser.parse_args(args=raw_args)
 
     all_specs = args.specs
@@ -434,6 +439,10 @@ def main(raw_args: Optional[List[str]] = None) -> int:
     if args.port and not args.target_dir.startswith("/"):
         print("If port is given then target dir must be absolute Unix-style path")
         return 1
+
+    if args.version:
+        print(__version__)
+        return 0
 
     try:
         install(all_specs, target_dir=args.target_dir, index_urls=index_urls, port=args.port)
