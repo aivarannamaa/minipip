@@ -15,6 +15,13 @@ extracted to the target device, otherwise just extracts to local filesystem.
 makes sure data gets synced (useful, if target is a USB volume representing MicroPython or
 CircuitPython filesystem)
 
+Installation
+--------------
+``pip install minipip``
+
+Requires Python 3.6+. There are no required dependencies (`rshell <https://pypi.org/project/rshell/>`_
+is optional dependency).
+
 Usage examples
 --------------
 
