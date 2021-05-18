@@ -17,10 +17,14 @@ for line in open(os.path.join(setupdir, "requirements.txt"), encoding="ASCII"):
     if line.strip() and not line.startswith("#"):
         requirements.append(line)
 
+with open(os.path.join(setupdir, "README.rst")) as fp:
+    long_description = fp.read()
+
 setup(
     name="minipip",
     version=version,
     description="Tool for installing packages for MicroPython and CircuitPython",
+    long_description=long_description,
     url="https://github.com/aivarannamaa/minipip",
     author="Aivar Annamaa",
     license="MIT",
