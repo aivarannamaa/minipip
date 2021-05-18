@@ -2,7 +2,7 @@ minipip
 =======
 Tool for installing distribution packages for MicroPython and CircuitPython.
 
-Supports both `upip-compatible packages <https://docs.micropython.org/en/latest/reference/packages.html>`_.
+Supports both `upip-compatible packages <https://docs.micropython.org/en/latest/reference/packages.html>`_,
 and regular pip-compatible
 packages (by using `pip install --target ... <https://pip.pypa.io/en/stable/cli/pip_install/#cmdoption-t>`_).
 
