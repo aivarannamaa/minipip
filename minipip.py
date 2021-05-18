@@ -22,7 +22,8 @@ except ImportError:
     # before Python 3.8
     def shlex_join(split_command):
         """Return a shell-escaped string from *split_command*."""
-        return ' '.join(shlex.quote(arg) for arg in split_command)
+        return " ".join(shlex.quote(arg) for arg in split_command)
+
 
 from pkg_resources import Requirement
 
@@ -336,6 +337,15 @@ def _resolve_version(req: Requirement, main_meta: Dict[str, Any]) -> Optional[st
     return sorted(matching_versions, key=pkg_resources.parse_version)[-1]
 
 
+def error(msg):
+    if sys.stderr.isatty():
+        print("\x1b[31m", msg, "\x1b[0m", sep="", file=sys.stderr)
+    else:
+        print(msg, file=sys.stderr)
+
+    return 1
+
+
 def main(raw_args: Optional[List[str]] = None) -> int:
     if raw_args is None:
         raw_args = sys.argv[1:]
@@ -372,7 +382,8 @@ def main(raw_args: Optional[List[str]] = None) -> int:
     parser.add_argument(
         "-p",
         "--port",
-        help="Serial port of the device",
+        help="Serial port of the device "
+        "(specify if you want minipip to upload the result to the device)",
         nargs="?",
     )
     parser.add_argument(
@@ -435,15 +446,10 @@ def main(raw_args: Optional[List[str]] = None) -> int:
     logger.addHandler(console_handler)
 
     if args.port and not _get_rshell_command():
-        print(
-            "Could not find rshell (required for uploading when serial port is given)",
-            file=sys.stderr,
-        )
-        return 1
+        return error("Could not find rshell (required for uploading when serial port is given)")
 
     if args.port and not args.target_dir.startswith("/"):
-        print("If port is given then target dir must be absolute Unix-style path")
-        return 1
+        return error("If port is given then target dir must be absolute Unix-style path")
 
     if args.version:
         print(__version__)
@@ -452,8 +458,7 @@ def main(raw_args: Optional[List[str]] = None) -> int:
     try:
         install(all_specs, target_dir=args.target_dir, index_urls=index_urls, port=args.port)
     except UserError as e:
-        print("ERROR:", e, file=sys.stderr)
-        return 1
+        return error(str(e))
     except subprocess.CalledProcessError:
         # assuming the subprocess (pip or rshell) already printed the error
         return 1
