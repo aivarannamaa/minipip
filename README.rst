@@ -10,7 +10,7 @@ By default it prefers packages at micropython.org-s index. If the package or the
 found there, then it turns to PyPI.
 
 If ``--port`` is given and `rshell <https://pypi.org/project/rshell/>`_ is available then uploads
-extracted to the target device, otherwise just extracts to local filesystem.
+the extracted files to the target device, otherwise just extracts to local filesystem.
 ``--target`` directory must be explicitly given in both cases. If target is local filesystem, then
 makes sure data gets synced (useful, if target is a USB volume representing MicroPython or
 CircuitPython filesystem)
