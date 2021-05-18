@@ -367,7 +367,7 @@ def main(raw_args: Optional[List[str]] = None) -> int:
     parser.add_argument(
         "specs",
         help="Package specification, eg. 'micropython-os' or 'micropython-os>=0.6'",
-        nargs="+",
+        nargs="*",
         metavar="package_spec",
     )
     parser.add_argument(
@@ -454,6 +454,8 @@ def main(raw_args: Optional[List[str]] = None) -> int:
     if args.version:
         print(__version__)
         return 0
+    if not all_specs:
+        return error("At least one package specifier or non-empty requirements file is required")
 
     try:
         install(all_specs, target_dir=args.target_dir, index_urls=index_urls, port=args.port)
