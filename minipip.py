@@ -266,6 +266,7 @@ def _install_with_pip(specs: List[str], target_dir: str, index_urls: List[str]):
 
     args = [
         "--no-input",
+        "--no-compile",
         "--disable-pip-version-check",
         "install",
         "--upgrade",
@@ -375,25 +376,34 @@ def main(raw_args: Optional[List[str]] = None) -> int:
 
     import argparse
 
-    description = textwrap.dedent(
-        """
+    parser = argparse.ArgumentParser(
+        description="Tool for managing MicroPython and CircuitPython packages"
+    )
+    subparsers = parser.add_subparsers(
+        dest="command",
+        title="commands",
+        description='Use "minipip <command> -h" for usage help of a command ',
+    )
+
+    install_parser = subparsers.add_parser(
+        "install",
+        help="Install a package",
+        description=textwrap.dedent(
+            """
         Meant for installing both upip and pip compatible distribution packages from 
         PyPI and micropython.org/pi to a local directory, USB volume or directly to 
         MicroPython filesystem over serial connection (requires rshell).    
     """
-    ).strip()
-
-    parser = argparse.ArgumentParser(description=description)
-    parser.add_argument(
-        "command", help="Currently the only supported command is 'install'", choices=["install"]
+        ).strip(),
     )
-    parser.add_argument(
+
+    install_parser.add_argument(
         "specs",
         help="Package specification, eg. 'micropython-os' or 'micropython-os>=0.6'",
         nargs="*",
         metavar="package_spec",
     )
-    parser.add_argument(
+    install_parser.add_argument(
         "-r",
         "--requirement",
         help="Install from the given requirements file.",
@@ -402,14 +412,14 @@ def main(raw_args: Optional[List[str]] = None) -> int:
         metavar="REQUIREMENT_FILE",
         default=[],
     )
-    parser.add_argument(
+    install_parser.add_argument(
         "-p",
         "--port",
         help="Serial port of the device "
         "(specify if you want minipip to upload the result to the device)",
         nargs="?",
     )
-    parser.add_argument(
+    install_parser.add_argument(
         "-t",
         "--target",
         help="Target directory (on device, if port is given, otherwise local)",
@@ -418,27 +428,36 @@ def main(raw_args: Optional[List[str]] = None) -> int:
         metavar="TARGET_DIR",
         required=True,
     )
-    parser.add_argument(
-        "-i",
-        "--index-url",
-        help="Custom index URL",
-    )
-    parser.add_argument(
-        "-v",
-        "--verbose",
-        help="Show more details about the process",
-        action="store_true",
-    )
-    parser.add_argument(
-        "-q",
-        "--quiet",
-        help="Don't show non-error output",
-        action="store_true",
-    )
+
+    list_parser = subparsers.add_parser("list", help="List installed packages")
+
+    for p in [install_parser, list_parser]:
+        p.add_argument(
+            "-i",
+            "--index-url",
+            help="Custom index URL",
+        )
+        p.add_argument(
+            "-v",
+            "--verbose",
+            help="Show more details about the process",
+            action="store_true",
+        )
+        p.add_argument(
+            "-q",
+            "--quiet",
+            help="Don't show non-error output",
+            action="store_true",
+        )
+
     parser.add_argument(
         "--version", help="Show program version and exit", action="version", version=__version__
     )
     args = parser.parse_args(args=raw_args)
+    print("ARGS", args)
+
+    if args.command != "install":
+        sys.exit(error("Only 'install' command is supported at the moment"))
 
     all_specs = args.specs
     for req_file in args.requirement_files:
