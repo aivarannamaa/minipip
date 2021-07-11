@@ -56,7 +56,7 @@ MP_ORG_INDEX = "https://micropython.org/pi"
 PYPI_INDEX = "https://pypi.org/pypi"
 DEFAULT_INDEX_URLS = [MP_ORG_INDEX, PYPI_INDEX]
 
-__version__ = "0.1b2"
+__version__ = "0.1b4"
 
 
 class UserError(RuntimeError):
@@ -337,7 +337,7 @@ def _fetch_metadata_and_resolve_version(
 
 def _read_requirements(req_file: str) -> List[str]:
     if not os.path.isfile(req_file):
-        raise UserError("Can't find '%s'" % req_file)
+        raise UserError("Can't find file '%s'" % req_file)
 
     result = []
     with open(req_file, "r", errors="replace") as fp:
@@ -362,6 +362,7 @@ def _resolve_version(req: Requirement, main_meta: Dict[str, Any]) -> Optional[st
 
 
 def error(msg):
+    msg = "ERROR: " + msg
     if sys.stderr.isatty():
         print("\x1b[31m", msg, "\x1b[0m", sep="", file=sys.stderr)
     else:
@@ -383,6 +384,7 @@ def main(raw_args: Optional[List[str]] = None) -> int:
         dest="command",
         title="commands",
         description='Use "minipip <command> -h" for usage help of a command ',
+        required=True,
     )
 
     install_parser = subparsers.add_parser(
@@ -454,14 +456,16 @@ def main(raw_args: Optional[List[str]] = None) -> int:
         "--version", help="Show program version and exit", action="version", version=__version__
     )
     args = parser.parse_args(args=raw_args)
-    print("ARGS", args)
 
     if args.command != "install":
-        sys.exit(error("Only 'install' command is supported at the moment"))
+        sys.exit(error("Sorry, only 'install' command is supported at the moment"))
 
     all_specs = args.specs
-    for req_file in args.requirement_files:
-        all_specs.extend(_read_requirements(req_file))
+    try:
+        for req_file in args.requirement_files:
+            all_specs.extend(_read_requirements(req_file))
+    except UserError as e:
+        sys.exit(error(str(e)))
 
     if args.index_url:
         index_urls = [args.index_url]
