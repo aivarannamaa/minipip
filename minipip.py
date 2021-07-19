@@ -81,10 +81,10 @@ def install(
     else:
         specs = spec
 
-
     temp_dir = tempfile.mkdtemp()
     try:
         _install_to_local_temp_dir(specs, temp_dir, index_urls)
+        _remove_unneeded_files(temp_dir)
         if port is not None:
             _copy_to_micropython_over_serial(temp_dir, port, target_dir)
         else:
@@ -95,6 +95,10 @@ def install(
 
 def _copy_to_local_target_dir(source_dir: str, target_dir: str):
     logger.info("Copying files to %s", os.path.abspath(target_dir))
+    if not os.path.exists(target_dir):
+        logger.info("Target directory '%s' doesn't exist. Creating.", target_dir)
+        os.makedirs(target_dir, mode=0o700)
+
     # Copying manually in order to be able to use os.fsync
     # see https://learn.adafruit.com/adafruit-circuit-playground-express/creating-and-editing-code#1-use-an-editor-that-writes-out-the-file-completely-when-you-save-it
     for root, dirs, files in os.walk(source_dir):
@@ -287,20 +291,6 @@ def _install_with_pip(specs: List[str], target_dir: str, index_urls: List[str]):
     logger.debug("Calling pip: %s", shlex_join(pip_cmd))
     subprocess.check_call(pip_cmd)
 
-    # delete files not required for MicroPython
-    for root, dirs, files in os.walk(target_dir):
-        for dir_name in dirs:
-            if (
-                dir_name.endswith(".dist-info")
-                or dir_name.endswith(".egg-info")
-                or dir_name == "__pycache__"
-            ):
-                shutil.rmtree(os.path.join(root, dir_name))
-
-        for file_name in files:
-            if file_name.endswith(".pyc"):
-                os.remove(os.path.join(root, file_name))
-
 
 def _fetch_metadata_and_resolve_version(
     req: Requirement, index_urls: List[str]
@@ -360,6 +350,41 @@ def _resolve_version(req: Requirement, main_meta: Dict[str, Any]) -> Optional[st
         return None
 
     return sorted(matching_versions, key=pkg_resources.parse_version)[-1]
+
+
+def _remove_unneeded_files(path: str) -> None:
+    unneeded = ["Scripts" if os.name == "nt" else "bin", "__pycache__"]
+
+    if "adafruit_blinka" in os.listdir(path):
+        unneeded += [
+            "adafruit_blinka",
+            "adafruit_platformdetect",
+            "Adafruit_PureIO",
+            "microcontroller",
+            "pyftdi",
+            "serial",
+            "usb",
+            "analogio.py",
+            "bitbangio.py",
+            "board.py",
+            "busio.py",
+            "digitalio.py",
+            "micropython.py",
+            "neopixel_write.py",
+            "pulseio.py",
+            "pwmio.py",
+            "rainbowio.py",
+        ]
+
+    unneeded_suffixes = [".dist-info", ".egg-info", ".pyc"]
+
+    for name in os.listdir(path):
+        if name in unneeded or any(name.endswith(suffix) for suffix in unneeded_suffixes):
+            full_path = os.path.join(path, name)
+            if os.path.isfile(full_path):
+                os.remove(full_path)
+            else:
+                shutil.rmtree(full_path)
 
 
 def error(msg):
