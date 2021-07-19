@@ -76,9 +76,15 @@ def install(
     if not index_urls:
         index_urls = DEFAULT_INDEX_URLS
 
+    if isinstance(spec, str):
+        specs = [spec]
+    else:
+        specs = spec
+
+
     temp_dir = tempfile.mkdtemp()
     try:
-        _install_to_local_temp_dir(spec, temp_dir, index_urls)
+        _install_to_local_temp_dir(specs, temp_dir, index_urls)
         if port is not None:
             _copy_to_micropython_over_serial(temp_dir, port, target_dir)
         else:
@@ -138,13 +144,8 @@ def _get_rshell_command() -> Optional[List[str]]:
 
 
 def _install_to_local_temp_dir(
-    spec: Union[List[str], str], temp_install_dir: str, index_urls: List[str]
+    specs: List[str], temp_install_dir: str, index_urls: List[str]
 ) -> None:
-    if isinstance(spec, str):
-        specs = [spec]
-    else:
-        specs = spec
-
     pip_specs = _install_all_upip_compatible(specs, temp_install_dir, index_urls)
 
     if pip_specs:
