@@ -56,7 +56,7 @@ MP_ORG_INDEX = "https://micropython.org/pi"
 PYPI_INDEX = "https://pypi.org/pypi"
 DEFAULT_INDEX_URLS = [MP_ORG_INDEX, PYPI_INDEX]
 
-__version__ = "0.1b4"
+__version__ = "0.1b5"
 
 
 class UserError(RuntimeError):
