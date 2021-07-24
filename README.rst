@@ -33,13 +33,33 @@ minipip -h
 
 ::
 
-    minipip [-h] [-r [REQUIREMENT_FILE [REQUIREMENT_FILE ...]]] [-p [PORT]] -t TARGET_DIR [-i INDEX_URL] [-v] [-q] [--version] {install} [package_spec [package_spec ...]]
+    usage: minipip.py [-h] [--version] {install,list} ...
+
+    Tool for managing MicroPython and CircuitPython packages
+
+    optional arguments:
+      -h, --help      show this help message and exit
+      --version       Show program version and exit
+
+    commands:
+      Use "minipip <command> -h" for usage help of a command
+
+      {install,list}
+        install       Install a package
+        list          List installed packages
+    (venv) annamaa@a2:~/python_stuff/minipip $
+
+minipip install -h
+------------------
+
+::
+
+    usage: minipip.py install [-h] [-r [REQUIREMENT_FILE [REQUIREMENT_FILE ...]]] [-p [PORT]] -t TARGET_DIR [-i INDEX_URL] [-v] [-q] [package_spec [package_spec ...]]
 
     Meant for installing both upip and pip compatible distribution packages from PyPI and micropython.org/pi to a local directory, USB volume or directly to MicroPython filesystem over
     serial connection (requires rshell).
 
     positional arguments:
-      {install}             Currently the only supported command is 'install'
       package_spec          Package specification, eg. 'micropython-os' or 'micropython-os>=0.6'
 
     optional arguments:
@@ -54,4 +74,3 @@ minipip -h
                             Custom index URL
       -v, --verbose         Show more details about the process
       -q, --quiet           Don't show non-error output
-      --version             Show program version and exit
