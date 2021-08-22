@@ -33,11 +33,17 @@ import subprocess
 import tarfile
 import tempfile
 import textwrap
-from typing import Union, List, Dict, Any, Optional, Tuple
+import threading
+from html.parser import HTMLParser
+from http.server import HTTPServer, BaseHTTPRequestHandler
+from socketserver import BaseRequestHandler, BaseServer
+from typing import Union, List, Dict, Any, Optional, Tuple, Callable
 from urllib.error import HTTPError
 from urllib.request import urlopen
 import pkg_resources
 import logging
+
+import typing
 
 try:
     from shlex import join as shlex_join
@@ -54,9 +60,127 @@ logger = logging.getLogger(__name__)
 
 MP_ORG_INDEX = "https://micropython.org/pi"
 PYPI_INDEX = "https://pypi.org/pypi"
+PYPI_SIMPLE_INDEX = "https://pypi.org/simple"
 DEFAULT_INDEX_URLS = [MP_ORG_INDEX, PYPI_INDEX]
+SERVER_ENCODING = "utf-8"
 
 __version__ = "0.1b5"
+
+
+class FileUrlsParser(HTMLParser):
+    def error(self, message):
+        pass
+
+    def __init__(self):
+        self._current_tag: str = ""
+        self._current_attrs: List[Tuple[str, str]] = []
+        self.file_urls: Dict[str, str] = {}
+        super().__init__()
+
+    def handle_starttag(self, tag: str, attrs: List[Tuple[str, str]]) -> None:
+        self._current_tag = tag
+        self._current_attrs = attrs
+
+    def handle_data(self, data: str) -> None:
+        if self._current_tag == "a":
+            for att, val in self._current_attrs:
+                if att == "href":
+                    self.file_urls[data] = val
+
+    def handle_endtag(self, tag):
+        pass
+
+
+class Downloader:
+    def __init__(self, index_url: str):
+        self._index_url = index_url.rstrip("/")
+        self._file_urls_cache: Dict[str, Dict[str, str]] = {}
+
+    def get_file_urls(self, dist_name: str) -> Dict[str, str]:
+        if dist_name not in self._file_urls_cache:
+            self._file_urls_cache[dist_name] = self._download_file_urls(dist_name)
+
+        return self._file_urls_cache[dist_name]
+
+    def _download_file_urls(self, dist_name) -> Dict[str, str]:
+        url = f"{self._index_url}/{dist_name}"
+        logger.debug("Downloading %s", url)
+
+        with urlopen(url) as fp:
+            parser = FileUrlsParser()
+            parser.feed(fp.read().decode("utf-8"))
+            return parser.file_urls
+
+    def download_file(self, dist_name: str, file_name: str) -> typing.BinaryIO:
+        urls = self.get_file_urls(dist_name)
+        assert file_name in urls
+        result = urlopen(urls[file_name])
+        logger.debug("Headers: %r", result.headers.items())
+        return result
+
+
+class MinipipServer(HTTPServer):
+    def __init__(
+        self,
+        server_address: Tuple[str, int],
+        request_handler_class: Callable[..., BaseRequestHandler],
+    ):
+        self.downloader = Downloader(PYPI_SIMPLE_INDEX)
+        super().__init__(server_address, request_handler_class)
+
+
+_server: Optional[MinipipServer] = None
+
+
+def close_server():
+    global _server
+
+    if _server is not None:
+        _server.shutdown()
+        _server = None
+
+
+class MinipipProxyHandler(BaseHTTPRequestHandler):
+    def __init__(self, request: bytes, client_address: Tuple[str, int], server: BaseServer):
+        print("CREATING NEW HANDLER")
+        assert isinstance(server, MinipipServer)
+        self._downloader = server.downloader
+        super(MinipipProxyHandler, self).__init__(request, client_address, server)
+
+    def do_GET(self) -> None:
+        path = self.path.strip("/")
+        logger.debug("do_GET for %s", path)
+        if "/" in path:
+            assert path.count("/") == 1
+            self._serve_file(*path.split("/"))
+        else:
+            self._serve_distribution_page(path)
+
+    def _serve_distribution_page(self, dist_name: str) -> None:
+        logger.debug("Serving index page for %s", dist_name)
+        file_urls = self._downloader.get_file_urls(dist_name)
+        self.send_response(200)
+        self.send_header("Content-type", f"text/html; charset={SERVER_ENCODING}")
+        self.end_headers()
+        self.wfile.write("<!DOCTYPE html><html><body>\n".encode(SERVER_ENCODING))
+        for file_name in file_urls:
+            self.wfile.write(
+                f"<a href='/{dist_name}/{file_name}/'>{file_name}</a>\n".encode(SERVER_ENCODING)
+            )
+        self.wfile.write("</body></html>".encode(SERVER_ENCODING))
+
+    def _serve_file(self, dist_name, file_name):
+        logger.debug("Serving %s for %s", file_name, dist_name)
+        fp = self._downloader.download_file(dist_name, file_name)
+        self.send_response(200)
+        self.send_header("Content-Type", "application/octet-stream")
+        self.end_headers()
+        while True:
+            block = fp.read(4096)
+            if block:
+                self.wfile.write(block)
+            else:
+                break
 
 
 class UserError(RuntimeError):
@@ -100,7 +224,8 @@ def _copy_to_local_target_dir(source_dir: str, target_dir: str):
         os.makedirs(target_dir, mode=0o700)
 
     # Copying manually in order to be able to use os.fsync
-    # see https://learn.adafruit.com/adafruit-circuit-playground-express/creating-and-editing-code#1-use-an-editor-that-writes-out-the-file-completely-when-you-save-it
+    # see https://learn.adafruit.com/adafruit-circuit-playground-express/creating-and-editing-code
+    # #1-use-an-editor-that-writes-out-the-file-completely-when-you-save-it
     for root, dirs, files in os.walk(source_dir):
         relative_dir = root[len(source_dir) :].lstrip("/\\")
         full_target_dir = os.path.join(target_dir, relative_dir)
@@ -255,6 +380,8 @@ def _install_single_upip_compatible_from_url(
 
 
 def _install_with_pip(specs: List[str], target_dir: str, index_urls: List[str]):
+    global _server
+
     logger.info("Installing with pip: %s", specs)
 
     suitable_indexes = [url for url in index_urls if url != MP_ORG_INDEX]
@@ -268,6 +395,11 @@ def _install_with_pip(specs: List[str], target_dir: str, index_urls: List[str]):
         # for some reason, this form does not work for some versions of some packages
         # (eg. micropython-os below 0.4.4)
         index_args = []
+
+    port = 8763
+    _server = MinipipServer(("", port), MinipipProxyHandler)
+    threading.Thread(name="minipip proxy", target=_server.serve_forever).start()
+    index_args = ["--index-url", "http://localhost:{port}/".format(port=port)]
 
     args = [
         "--no-input",
@@ -290,6 +422,7 @@ def _install_with_pip(specs: List[str], target_dir: str, index_urls: List[str]):
     )
     logger.debug("Calling pip: %s", shlex_join(pip_cmd))
     subprocess.check_call(pip_cmd)
+    close_server()
 
 
 def _fetch_metadata_and_resolve_version(
@@ -526,11 +659,15 @@ def main(raw_args: Optional[List[str]] = None) -> int:
 
     try:
         install(all_specs, target_dir=args.target_dir, index_urls=index_urls, port=args.port)
+    except KeyboardInterrupt:
+        return 1
     except UserError as e:
         return error(str(e))
     except subprocess.CalledProcessError:
         # assuming the subprocess (pip or rshell) already printed the error
         return 1
+    finally:
+        close_server()
 
     return 0
 

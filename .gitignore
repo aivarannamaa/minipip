@@ -3,3 +3,4 @@ build
 dist
 minipip.egg-info
 venv
+out
